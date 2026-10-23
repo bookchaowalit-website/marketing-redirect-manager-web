@@ -37,10 +37,10 @@ A portfolio visitor, or someone sketching which old paths should forward where b
 
 - Live: https://redirect-manager.bookchaowalit.com (HTTP 200 on 2026-10-23).
 - The Vercel project `bookchaowalit-redirect-manager-frontend` is deployed only by CLI. Last production deployment:
-  2026-10-23 (CLI, commit b1c02bf, the Next 16.4.2 CVE patch). Its Git link names the old repository
-  (`bookchaowalit/bookchaowalit-redirect-manager-frontend`), so a push to `main` does not deploy: the live site lags
-  `main` (no Sentry, no duplicate/loop checks, old template MCP route) until the owner reconnects Vercel Git to this
-  repository (owner action D9).
+  2026-10-23 (CLI, commit b782970: generate short path, on Next 16.4.2); the live click-through (generate, add,
+  test, reload) passed after deploy. Its Git link still names the old repository
+  (`bookchaowalit/bookchaowalit-redirect-manager-frontend`), so a push to `main` does not deploy and later commits
+  will lag until the owner reconnects Vercel Git to this repository (owner action D9).
 - `NEXT_PUBLIC_SENTRY_DSN` is set on the Vercel project (Sentry project `marketing-redirect-manager-web`, org
   `personal-yu0`).
 
