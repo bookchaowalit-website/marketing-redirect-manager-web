@@ -38,7 +38,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .forward-section-head { margin-bottom: 24px; color: var(--ink-soft); font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; }
 .forward-index { color: var(--red); font-weight: 700; }
 .forward-compose h2, .forward-test h2, .forward-stack h2 { margin: 0 0 22px; color: var(--ink); font-family: Georgia, serif; font-size: 28px; font-weight: 400; }
-.forward-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.forward-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .forward-form label, .forward-test-input { display: grid; gap: 7px; }
 .forward-form label > span, .forward-test-input > span { color: var(--ink-soft); font-family: var(--font-geist-mono), monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
 .forward-form input, .forward-form select, .forward-test-input input { min-width: 0; width: 100%; padding: 12px 11px; border: 1px solid var(--line); border-radius: 0; background: var(--white); color: var(--ink); font-size: 13px; }
