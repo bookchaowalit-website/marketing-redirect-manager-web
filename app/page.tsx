@@ -1,50 +1,31 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { CODES, STARTER_RULES, STORAGE_KEY, addRule as addTo, findRule, isCode, parseRules, removeRule, type Code } from "@/lib/redirects";
+import { createLocalStore } from "@/lib/local-store";
 
-type Rule = { id: string; from: string; to: string; code: string };
-
-const STARTER_RULES: Rule[] = [
-  { id: "1", from: "/old-blog", to: "/writing", code: "301" },
-  { id: "2", from: "/go/github", to: "https://github.com/bookchaowalit", code: "302" },
-];
-
-function useLocalStorage<T>(key: string, initial: T) {
-  const [value, setValue] = useState<T>(initial);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) setValue(JSON.parse(saved) as T);
-    } catch {
-      // The page remains useful if stored demo data is malformed.
-    }
-    setReady(true);
-  }, [key]);
-
-  useEffect(() => {
-    if (ready) localStorage.setItem(key, JSON.stringify(value));
-  }, [key, ready, value]);
-
-  return [value, setValue] as const;
-}
+// Browser-only rule stack; the server render and first paint use the starter rules.
+const store = createLocalStore(STORAGE_KEY, STARTER_RULES, parseRules);
+const CODE_LABELS: Record<Code, string> = { "301": "301 / permanent", "302": "302 / temporary", "307": "307 / preserve method" };
 
 export default function Home() {
-  const [rules, setRules] = useLocalStorage<Rule[]>("redirect-manager-v1", STARTER_RULES);
+  const rules = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [code, setCode] = useState("301");
+  const [code, setCode] = useState<Code>("301");
   const [test, setTest] = useState("/old-blog");
-  const match = rules.find((rule) => rule.from === test);
+  const [error, setError] = useState("");
+  const match = findRule(rules, test);
 
   function addRule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!from.trim() || !to.trim()) return;
-    setRules((current) => [
-      { id: crypto.randomUUID(), from: from.trim(), to: to.trim(), code },
-      ...current,
-    ]);
+    const result = addTo(rules, { from, to, code }, crypto.randomUUID());
+    if (result.error !== undefined) {
+      setError(result.error);
+      return;
+    }
+    store.set(result.rules);
+    setError("");
     setFrom("");
     setTo("");
   }
@@ -109,14 +90,13 @@ export default function Home() {
               </label>
               <label className="forward-code">
                 <span>STATUS</span>
-                <select value={code} onChange={(event) => setCode(event.target.value)}>
-                  <option value="301">301 / permanent</option>
-                  <option value="302">302 / temporary</option>
-                  <option value="307">307 / preserve method</option>
+                <select value={code} onChange={(event) => isCode(event.target.value) && setCode(event.target.value)}>
+                  {CODES.map((value) => <option key={value} value={value}>{CODE_LABELS[value]}</option>)}
                 </select>
               </label>
               <button className="forward-submit" type="submit">Add to stack</button>
             </form>
+            {error ? <p className="forward-note" role="alert">{error}</p> : null}
             <p className="forward-note">Stored in this browser only. Nothing is published.</p>
           </div>
 
@@ -158,8 +138,8 @@ export default function Home() {
                 <button
                   className="forward-delete"
                   type="button"
-                  aria-label={"Delete " + rule.from}
-                  onClick={() => setRules((current) => current.filter((item) => item.id !== rule.id))}
+                  aria-label={"Remove " + rule.from}
+                  onClick={() => store.update((current) => removeRule(current, rule.id))}
                 >
                   Remove
                 </button>
