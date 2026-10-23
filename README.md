@@ -1,7 +1,8 @@
 # Forwarding Desk (redirect manager)
 
 A local notebook of redirect rules: two starter rules, a form to add one (path, destination, status 301/302/307), an
-exact-match "check a path" box and a removable rule stack. Rules are kept in this browser's `localStorage`. Nothing
+exact-match "check a path" box, a "Generate short path" button (a free `/s/<code>` FROM path, merged from the old
+URL shortener) and a removable rule stack. Rules are kept in this browser's `localStorage`. Nothing
 is published and nothing redirects.
 
 Live: https://redirect-manager.bookchaowalit.com (deployed by Vercel CLI; it can lag `main`, see `PRODUCT.md`).

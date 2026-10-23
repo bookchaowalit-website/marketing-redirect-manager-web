@@ -18,15 +18,18 @@ A portfolio visitor, or someone sketching which old paths should forward where b
 1. Two starter rules; add a rule with a path, a destination and a status code. The form refuses empty fields, a path
    without a leading `/`, a second rule for the same path and a rule that points a path at itself, and says why.
 2. "Check a path" shows the matching rule (exact match, surrounding spaces ignored) or "No route found".
-3. Remove any rule. The stack is saved in `localStorage` and restored on reload; corrupt saved data is ignored and
+3. "Generate short path" fills the FROM field with a free `/s/<6 characters>` path (base 36, never one already in the
+   stack), so a rule can act as a short link. This replaced `marketing-url-shortener-web` on 2026-10-23. It only
+   writes a rule here; nothing serves `/s/...` and nothing redirects.
+4. Remove any rule. The stack is saved in `localStorage` and restored on reload; corrupt saved data is ignored and
    the starter rules are used.
-4. `/api/mcp` answers JSON-RPC with `get_starter_rules` and `test_path` (exact match against the starter rules or
+5. `/api/mcp` answers JSON-RPC with `get_starter_rules` and `test_path` (exact match against the starter rules or
    rules the caller sends). It is stateless and cannot see a visitor's saved rules.
-5. Front-end and server errors go to Sentry (errors only, personal data stripped) when `NEXT_PUBLIC_SENTRY_DSN` is set.
+6. Front-end and server errors go to Sentry (errors only, personal data stripped) when `NEXT_PUBLIC_SENTRY_DSN` is set.
 
 ## What does not work (and must not be claimed)
 
-- No regex or wildcard rules, no bulk import/export, no chain detection, no click analytics, no domains.
+- No regex or wildcard rules, no bulk import/export, no chain detection, no click analytics, no domains, no QR codes.
 - Nothing is published or enforced: no server, CDN or hosting config is written ("Nothing is published").
 - No accounts or sync; no analytics beyond Vercel Analytics and Speed Insights on this page itself.
 
@@ -44,5 +47,5 @@ A portfolio visitor, or someone sketching which old paths should forward where b
 ## Boundaries
 
 - Browser-only apart from the stateless `/api/mcp` route.
-- Overlaps `marketing-url-shortener-web` (a short code is a redirect rule with a generated path). Merging the
-  shortener into this app is recommended (2026-10-23); it is an owner decision and nothing has been merged.
+- Absorbed `marketing-url-shortener-web` on 2026-10-23 (owner approval): its short-code logic is the generated short
+  path above, its Vercel project is paused and its repository is archived. The MCP route has no short-path tool.

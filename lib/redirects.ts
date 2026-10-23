@@ -32,6 +32,28 @@ export function addRule(rules: Rule[], input: { from: string; to: string; code: 
   return { rules: [{ id, from, to, code: input.code }, ...rules] };
 }
 
+// Short paths (merged from marketing-url-shortener-web on 2026-10-23): a generated /s/<code> FROM path.
+export const SHORT_PREFIX = "/s/";
+const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+const CODE_LENGTH = 6;
+const MAX_ATTEMPTS = 20;
+
+// One character per draw, so the code is always CODE_LENGTH long.
+export function makeCode(random: () => number = Math.random): string {
+  let code = "";
+  for (let i = 0; i < CODE_LENGTH; i += 1) code += ALPHABET[Math.min(ALPHABET.length - 1, Math.floor(random() * ALPHABET.length))];
+  return code;
+}
+
+/** A short path not yet in the stack, or null when MAX_ATTEMPTS draws all collide. */
+export function generateShortPath(rules: Rule[], random: () => number = Math.random): string | null {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    const path = `${SHORT_PREFIX}${makeCode(random)}`;
+    if (!findRule(rules, path)) return path;
+  }
+  return null;
+}
+
 export function removeRule(rules: Rule[], id: string): Rule[] {
   return rules.filter((item) => item.id !== id);
 }

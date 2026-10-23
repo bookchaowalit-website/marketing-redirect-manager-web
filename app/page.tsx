@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type FormEvent } from "react";
-import { CODES, STARTER_RULES, STORAGE_KEY, addRule as addTo, findRule, isCode, parseRules, removeRule, type Code } from "@/lib/redirects";
+import { CODES, STARTER_RULES, STORAGE_KEY, addRule as addTo, findRule, generateShortPath, isCode, parseRules, removeRule, type Code } from "@/lib/redirects";
 import { createLocalStore } from "@/lib/local-store";
 
 // Browser-only rule stack; the server render and first paint use the starter rules.
@@ -28,6 +28,16 @@ export default function Home() {
     setError("");
     setFrom("");
     setTo("");
+  }
+
+  function generatePath() {
+    const path = generateShortPath(rules);
+    if (path === null) {
+      setError("Could not find a free short path; try again.");
+      return;
+    }
+    setFrom(path);
+    setError("");
   }
 
   return (
@@ -70,15 +80,22 @@ export default function Home() {
             </div>
             <h2>Write a forwarding label</h2>
             <form className="forward-form" onSubmit={addRule}>
-              <label>
-                <span>FROM PATH</span>
-                <input
-                  value={from}
-                  onChange={(event) => setFrom(event.target.value)}
-                  placeholder="/old-address"
-                  spellCheck={false}
-                />
-              </label>
+              <div className="forward-from">
+                <label>
+                  <span>FROM PATH</span>
+                  <input
+                    value={from}
+                    onChange={(event) => setFrom(event.target.value)}
+                    placeholder="/old-address"
+                    spellCheck={false}
+                    aria-describedby="from-hint"
+                  />
+                </label>
+                <button className="forward-generate" type="button" onClick={generatePath}>
+                  Generate short path
+                </button>
+                <span id="from-hint" className="forward-hint">Or let the desk issue a /s/ code.</span>
+              </div>
               <label>
                 <span>TO DESTINATION</span>
                 <input

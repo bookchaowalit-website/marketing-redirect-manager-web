@@ -11,4 +11,10 @@ describe("home page", () => {
     expect(html).toContain("Nothing is published.");
     expect(html).toMatch(/Rules are\s+exact-match examples/);
   });
+
+  it("offers a generated short path for the FROM field", () => {
+    const html = renderToString(<Home />);
+    expect(html).toContain("Generate short path");
+    expect(html).toContain('aria-describedby="from-hint"');
+  });
 });
