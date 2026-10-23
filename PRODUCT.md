@@ -1,54 +1,48 @@
-# bookchaowalit-redirect-manager-frontend — Product brief
+# Forwarding Desk (redirect manager) — Product truth
 
-**Slug:** `bookchaowalit-website/bookchaowalit-redirect-manager-frontend`  
-**Generated:** 2026-08-11 (bulk Book Dev closeout)  
-**Status:** starter / portfolio boundary
+> Inferred from the code and copy (no user interview). Checked against the portfolio card claims review
+> (`portfolio-site-web/docs/audits/CARD-CLAIMS-REVIEW-2026-10.md`, row `redirect-manager`, evidence Live→Prototype)
+> on 2026-10-23.
 
-## Purpose
+## What it is
 
-Portfolio repository under Book Dev. This brief records ownership and the
-current honest status so the nested tree is not an empty shell in the task
-system.
+A client-side list of redirect rules (path → destination with a 301/302/307 code) and an exact-match tester, saved in
+the visitor's browser.
 
-## Runnable path
+## Who it is for
 
-See `README.md` for install and run instructions when present.
+A portfolio visitor, or someone sketching which old paths should forward where before writing real config.
 
-## Limits
+## What works today
 
-- Not claimed as production-ready unless README and tests prove it.
-- Mobile smoke / emulator acceptance is separate and toolchain-dependent.
+1. Two starter rules; add a rule with a path, a destination and a status code. The form refuses empty fields, a path
+   without a leading `/`, a second rule for the same path and a rule that points a path at itself, and says why.
+2. "Check a path" shows the matching rule (exact match, surrounding spaces ignored) or "No route found".
+3. Remove any rule. The stack is saved in `localStorage` and restored on reload; corrupt saved data is ignored and
+   the starter rules are used.
+4. `/api/mcp` answers JSON-RPC with `get_starter_rules` and `test_path` (exact match against the starter rules or
+   rules the caller sends). It is stateless and cannot see a visitor's saved rules.
+5. Front-end and server errors go to Sentry (errors only, personal data stripped) when `NEXT_PUBLIC_SENTRY_DSN` is set.
 
-## Current product truth
+## What does not work (and must not be claimed)
 
-- A browser-local redirect rule desk with exact path matching and a test path.
-- Visitors can add 301/302/307 rules, delete rules, and see the matching
-  destination for a sample path.
-- Rules persist in localStorage; there is no server, CDN integration, publish
-  step, authentication, or multi-tenant claim.
+- No regex or wildcard rules, no bulk import/export, no chain detection, no click analytics, no domains.
+- Nothing is published or enforced: no server, CDN or hosting config is written ("Nothing is published").
+- No accounts or sync; no analytics beyond Vercel Analytics and Speed Insights on this page itself.
 
-## Source README excerpt
+## Live URL and deploy state
 
-```
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+- Live: https://redirect-manager.bookchaowalit.com (HTTP 200 on 2026-10-23).
+- The Vercel project `bookchaowalit-redirect-manager-frontend` is deployed only by CLI. Last production deployment:
+  2026-10-23 (CLI, commit b1c02bf, the Next 16.4.2 CVE patch). Its Git link names the old repository
+  (`bookchaowalit/bookchaowalit-redirect-manager-frontend`), so a push to `main` does not deploy: the live site lags
+  `main` (no Sentry, no duplicate/loop checks, old template MCP route) until the owner reconnects Vercel Git to this
+  repository (owner action D9).
+- `NEXT_PUBLIC_SENTRY_DSN` is set on the Vercel project (Sentry project `marketing-redirect-manager-web`, org
+  `personal-yu0`).
 
-## Getting Started
+## Boundaries
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize an
-```
+- Browser-only apart from the stateless `/api/mcp` route.
+- Overlaps `marketing-url-shortener-web` (a short code is a redirect rule with a generated path). Merging the
+  shortener into this app is recommended (2026-10-23); it is an owner decision and nothing has been merged.
