@@ -39,6 +39,7 @@ A portfolio visitor, or someone sketching which old paths should forward where b
   list and writes in one synchronous step, but there is no cross-tab lock, so two tabs saving in the same instant can
   still lose one save. A Web Locks wrapper around every write path would close it; not done for a demo list.
 - A self-redirect error (From and To the same) is tied to the From field only, so it and its `aria-invalid` stay until the next Add even after To is edited; frozen app, not fixed (Codex report -6777a98fa7).
+- `NEXT_PUBLIC_SITE_URL` with a path (e.g. `https://example.test/app/`) is accepted although next.config sets no `basePath`, so robots.txt and the sitemap would point at `/app/...` URLs the app does not serve; set an origin only. Frozen app, not fixed (Codex report -a31874f19d).
 
 ## Live URL and deploy state
 
