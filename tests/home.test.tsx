@@ -170,7 +170,11 @@ describe("redirect manager", () => {
     type(field("From path"), "/old-blog");
     type(field("To destination"), "/elsewhere");
     submit();
+    // Nothing comes back, so nothing is written: a stale write could drop a rule another tab just saved.
+    const write = vi.spyOn(window.localStorage, "setItem");
     press(button("Undo remove"));
+    expect(write.mock.calls.filter(([key]) => key === STORAGE_KEY)).toEqual([]);
+    write.mockRestore();
     expect($('[role="status"]')?.textContent).toBe("/old-blog is already in use, so the newer rule stays.");
     // The toast closes, so the reason is also shown on screen, not only announced.
     expect($(".rm-notice")?.textContent).toBe("/old-blog is already in use, so the newer rule stays.");

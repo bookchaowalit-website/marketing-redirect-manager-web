@@ -160,9 +160,10 @@ export default function Home() {
   function undo() {
     const items = removedRef.current?.items;
     if (!items?.length) return;
-    // Latest removal first, so each rule goes back next to the rules it sat between at the time.
-    const next = items.reduceRight((list, { rule, index, beforeId, afterId }) => restoreRule(list, rule, index, { beforeId, afterId }), store.getSnapshot());
-    store.set(next);
+    // Latest removal first, so each rule goes back next to the rules it sat between at the time. Read and write in
+    // one update: when no rule can come back the list is returned as is and nothing is written.
+    let next: Rule[] = [];
+    store.update((latest) => (next = items.reduceRight((list, { rule, index, beforeId, afterId }) => restoreRule(list, rule, index, { beforeId, afterId }), latest)));
     // A path re-added meanwhile keeps the new rule: say which ones could not come back.
     const back = items.filter(({ rule }) => next.some((item) => item.id === rule.id));
     const blocked = items.filter(({ rule }) => !next.some((item) => item.id === rule.id));
