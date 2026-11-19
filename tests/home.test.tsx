@@ -181,6 +181,31 @@ describe("redirect manager", () => {
     expect(rows().filter((row) => row?.startsWith("/old-blog"))).toEqual(["/old-blog → /elsewhere"]);
   });
 
+  it("Add builds on the latest saved rules, not the list this tab last drew", () => {
+    mount();
+    press(button("New rule"));
+    type(field("From path"), "/fresh");
+    type(field("To destination"), "/f");
+    // Another tab saves THIRD just before Add; this tab has not re-rendered or had the storage event yet.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([THIRD]));
+    submit();
+    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]") as { from: string }[];
+    expect(saved.map((rule) => rule.from)).toEqual(["/fresh", "/third"]);
+  });
+
+  it("Add checks a duplicate path against the latest saved rules and then writes nothing", () => {
+    mount();
+    press(button("New rule"));
+    type(field("From path"), "/third");
+    type(field("To destination"), "/elsewhere");
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([THIRD]));
+    const write = vi.spyOn(window.localStorage, "setItem");
+    submit();
+    expect(write.mock.calls.filter(([key]) => key === STORAGE_KEY)).toEqual([]);
+    write.mockRestore();
+    expect(host.textContent).toContain("A rule for /third is already in the stack.");
+  });
+
   it("Restore example rules keeps rules another tab saved since the empty list was drawn", () => {
     window.localStorage.setItem(STORAGE_KEY, "[]");
     mount();

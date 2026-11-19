@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { AppFoot, AppTop, ListButton, Pill, PlusIcon, type Tone } from "@/components/app-shell";
-import { CODES, CODE_NAMES, STARTER_RULES, STORAGE_KEY, addRule as addTo, errorField, findRule, generateShortPath, removeRule, restoreRule, parseRules, type Code, type Rule } from "@/lib/redirects";
+import { CODES, CODE_NAMES, STARTER_RULES, STORAGE_KEY, addRule as addTo, errorField, findRule, generateShortPath, removeRule, restoreRule, parseRules, type AddResult, type Code, type Rule } from "@/lib/redirects";
 import { createLocalStore } from "@/lib/local-store";
 
 // Browser-only rule stack; the server render and first paint use the starter rules.
@@ -105,14 +105,19 @@ export default function Home() {
 
   function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = addTo(rules, { from, to, code }, createId());
+    // Check and add against the latest saved rules in one update (another tab may have saved since this one drew);
+    // a refused rule leaves the list as it is, so nothing is written.
+    let result: AddResult = { error: "" };
+    store.update((latest) => {
+      result = addTo(latest, { from, to, code }, createId());
+      return result.rules ?? latest;
+    });
     if (result.error !== undefined) {
       const field = errorField({ from, to }, result.error);
       setError({ field, message: result.error });
       (field === "from" ? fromRef : toRef).current?.focus();
       return;
     }
-    store.set(result.rules);
     if (filter !== "All" && filter !== code) setFilter(code);
     setQuery("");
     setAnnouncement(`Added ${from.trim()} to ${to.trim()}.`);
