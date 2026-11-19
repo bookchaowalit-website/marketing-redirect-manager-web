@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
@@ -171,6 +173,22 @@ describe("redirect manager", () => {
     press(button("Undo remove"));
     expect($('[role="status"]')?.textContent).toBe("/old-blog is already in use, so the newer rule stays.");
     expect(rows().filter((row) => row?.startsWith("/old-blog"))).toEqual(["/old-blog → /elsewhere"]);
+  });
+
+  it("Restore example rules keeps rules another tab saved since the empty list was drawn", () => {
+    window.localStorage.setItem(STORAGE_KEY, "[]");
+    mount();
+    // Another tab adds a rule; this tab has not received the storage event yet.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([THIRD]));
+    press(button("Restore example rules"));
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]")).toEqual([THIRD]);
+    expect(rows()).toEqual(["/third → /3"]);
+    expect($('[role="status"]')?.textContent).toBe("Rules were added in another tab, so the example rules were not restored.");
+  });
+
+  it("lets a long path in an error message wrap instead of widening the form", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    expect(css).toMatch(/\.rm-error \{[^}]*overflow-wrap: anywhere;/);
   });
 
   it("offers the example rules back when the stack is empty, and clears a search that matches nothing", () => {

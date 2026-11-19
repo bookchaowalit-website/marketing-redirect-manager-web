@@ -12,7 +12,8 @@ html, body { margin: 0; background: var(--as-bg); }
 .rm-from .as-field input, .rm-check input { font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace; }
 .rm-hint, .rm-error { margin: -6px 0 0; font-size: 14px; line-height: 1.5; }
 .rm-hint { color: var(--as-muted); }
-.rm-error { color: var(--as-danger); font-weight: 600; }
+/* A long duplicate path wraps inside the message instead of widening the form past the screen. */
+.rm-error { color: var(--as-danger); font-weight: 600; overflow-wrap: anywhere; }
 .as-field input[aria-invalid="true"] { border-color: var(--as-danger); border-width: 2px; }
 .rm-empty-actions { margin-top: 8px; }
 .rm-check { display: grid; gap: 12px; margin-top: 24px; padding: 16px; border: 1px solid var(--as-line); border-radius: 18px; background: var(--as-surface); box-shadow: var(--as-shadow); }

@@ -168,10 +168,17 @@ export default function Home() {
   }
 
   function restoreExamples() {
-    store.set(STARTER_RULES);
+    // Read the saved list first: another tab may have added rules since this one drew "No rules yet",
+    // and writing the examples over them would lose those rules with no Undo.
+    let restored = false;
+    store.update((current) => {
+      if (current.length > 0) return current;
+      restored = true;
+      return STARTER_RULES;
+    });
     // The example rules are 301 and 302: show them all, whatever list was picked.
     setFilter("All");
-    setAnnouncement("Restored the example rules.");
+    setAnnouncement(restored ? "Restored the example rules." : "Rules were added in another tab, so the example rules were not restored.");
   }
 
   const lists: { value: Filter; tone?: Tone; label: string }[] = [
