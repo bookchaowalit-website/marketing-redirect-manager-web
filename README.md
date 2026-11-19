@@ -1,4 +1,4 @@
-# Forwarding Desk (redirect manager)
+# Redirect Manager
 
 A local notebook of redirect rules: two starter rules, a form to add one (path, destination, status 301/302/307), an
 exact-match "check a path" box, a "Generate short path" button (a free `/s/<code>` FROM path, merged from the old
@@ -41,4 +41,6 @@ scan on every push and PR to `main`.
 - `app/api/mcp/route.ts`: stateless JSON-RPC endpoint with `get_starter_rules` and `test_path`.
 - `lib/sentry.ts` + `instrumentation*.ts`: error reporting to Sentry, errors only, personal data stripped; off when
   `NEXT_PUBLIC_SENTRY_DSN` is unset.
-- `app/more-projects/page.tsx`: shared portfolio link page (copied per repository, not a package).
+- `/more-projects` is a permanent (308) redirect to https://bookchaowalit.com/ (`next.config.ts`); the footer links there too.
+- `lib/site.ts` + `app/robots.ts` + `app/sitemap.ts`: canonical origin https://redirect-manager.bookchaowalit.com (override with `NEXT_PUBLIC_SITE_URL`).
+- `app/app-shell.css`, `components/app-shell.tsx`: the shared App shell, copied in (see `APP-SHELL.md`).

@@ -73,3 +73,18 @@ export function parseRules(raw: string): Rule[] | null {
     return null;
   }
 }
+
+/** Which form field an addRule error belongs to, so the page can show it under that field. */
+export function errorField(input: { from: string; to: string }, error: string): "from" | "to" {
+  if (error.startsWith("Fill in both")) return input.from.trim() ? "to" : "from";
+  return "from";
+}
+
+/** Puts a removed rule back at its old position (Undo); a rule whose path was re-added meanwhile stays out. */
+export function restoreRule(rules: Rule[], rule: Rule, index: number): Rule[] {
+  if (findRule(rules, rule.from)) return rules;
+  const at = Math.max(0, Math.min(index, rules.length));
+  return [...rules.slice(0, at), rule, ...rules.slice(at)];
+}
+
+export const CODE_NAMES: Record<Code, string> = { "301": "Permanent", "302": "Temporary", "307": "Temporary, keeps method" };

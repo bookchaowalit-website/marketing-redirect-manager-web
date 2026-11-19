@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STARTER_RULES, addRule, findRule, parseRules, removeRule } from "@/lib/redirects";
+import { STARTER_RULES, addRule, errorField, findRule, parseRules, removeRule, restoreRule } from "@/lib/redirects";
 
 describe("findRule", () => {
   it("finds an exact path match", () => {
@@ -54,5 +54,19 @@ describe("parseRules", () => {
     expect(parseRules("{}")).toBeNull();
     expect(parseRules(JSON.stringify([{ id: "1", from: "/a", to: "/b", code: "404" }]))).toBeNull();
     expect(parseRules(JSON.stringify([{ id: "1", from: "/a", code: "301" }]))).toBeNull();
+  });
+});
+
+describe("errorField and restoreRule", () => {
+  it("puts each error under the field it is about", () => {
+    expect(errorField({ from: "", to: "/x" }, "Fill in both the path and the destination.")).toBe("from");
+    expect(errorField({ from: "/a", to: " " }, "Fill in both the path and the destination.")).toBe("to");
+    expect(errorField({ from: "a", to: "/x" }, "The path must start with /.")).toBe("from");
+  });
+  it("restores a removed rule at its old place unless its path is back already", () => {
+    const [first, second] = STARTER_RULES;
+    expect(restoreRule([second], first, 0)).toEqual([first, second]);
+    expect(restoreRule([second], first, 9)).toEqual([second, first]);
+    expect(restoreRule([{ ...first, id: "new" }], first, 0)).toEqual([{ ...first, id: "new" }]);
   });
 });

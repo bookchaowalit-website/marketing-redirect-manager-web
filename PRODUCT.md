@@ -1,4 +1,4 @@
-# Forwarding Desk (redirect manager) — Product truth
+# Redirect Manager — Product truth
 
 > Inferred from the code and copy (no user interview). Checked against the portfolio card claims review
 > (`portfolio-site-web/docs/audits/CARD-CLAIMS-REVIEW-2026-10.md`, row `redirect-manager`, evidence Live→Prototype)
@@ -21,7 +21,7 @@ A portfolio visitor, or someone sketching which old paths should forward where b
 3. "Generate short path" fills the FROM field with a free `/s/<6 characters>` path (base 36, never one already in the
    stack), so a rule can act as a short link. This replaced `marketing-url-shortener-web` on 2026-10-23. It only
    writes a rule here; nothing serves `/s/...` and nothing redirects.
-4. Remove any rule. The stack is saved in `localStorage` and restored on reload; corrupt saved data is ignored and
+4. Remove any rule (Undo is offered for a few seconds; an empty stack offers the example rules back). The stack is saved in `localStorage` and restored on reload; corrupt saved data is ignored and
    the starter rules are used.
 5. `/api/mcp` answers JSON-RPC with `get_starter_rules` and `test_path` (exact match against the starter rules or
    rules the caller sends). It is stateless and cannot see a visitor's saved rules.
@@ -31,7 +31,7 @@ A portfolio visitor, or someone sketching which old paths should forward where b
 
 - No regex or wildcard rules, no bulk import/export, no chain detection, no click analytics, no domains, no QR codes.
 - Nothing is published or enforced: no server, CDN or hosting config is written ("Nothing is published").
-- No accounts or sync; no analytics beyond Vercel Analytics and Speed Insights on this page itself.
+- No accounts, sync or analytics (Vercel Analytics and Speed Insights were removed 2026-11-19).
 
 ## Live URL and deploy state
 
