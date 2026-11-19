@@ -55,5 +55,13 @@ export function createLocalStore<T>(key: string, fallback: T, parse: (raw: strin
     };
   }
 
-  return { subscribe, getSnapshot, getServerSnapshot: () => fallback, set, update: (change) => set(change(getSnapshot())) };
+  // An update reads the latest saved value and writes in the same synchronous step; a change that returns the value
+  // it was given writes nothing, so a no-op never puts a stale copy back over another tab's save.
+  function update(change: (current: T) => T) {
+    const current = getSnapshot();
+    const next = change(current);
+    if (next !== current) set(next);
+  }
+
+  return { subscribe, getSnapshot, getServerSnapshot: () => fallback, set, update };
 }

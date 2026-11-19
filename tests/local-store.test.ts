@@ -52,6 +52,17 @@ describe("createLocalStore", () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  it("an update that returns the current value writes nothing", () => {
+    const storage = fakeStorage({ k: "5" });
+    vi.stubGlobal("localStorage", storage);
+    const write = vi.spyOn(storage, "setItem");
+    const store = createLocalStore("k", 1, parse);
+    store.update((current) => current);
+    expect(write).not.toHaveBeenCalled();
+    store.update((current) => current + 1);
+    expect(storage.data.get("k")).toBe("6");
+  });
+
   it("keeps working in memory when storage throws", () => {
     vi.stubGlobal("localStorage", {
       getItem: () => {

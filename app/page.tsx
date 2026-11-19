@@ -42,6 +42,9 @@ export default function Home() {
   // A visible note for an Undo that could not bring every rule back; cleared by the next remove.
   const [notice, setNotice] = useState("");
   const fromRef = useRef<HTMLInputElement>(null);
+  // Where focus goes when the empty-state button that had it is removed: the list heading or the search box.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const toRef = useRef<HTMLInputElement>(null);
   const newRef = useRef<HTMLButtonElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
@@ -175,13 +178,18 @@ export default function Home() {
   function restoreExamples() {
     // Read the saved list first: another tab may have added rules since this one drew "No rules yet",
     // and writing the examples over them would lose those rules with no Undo.
-    // When rules are there, write nothing: the read already re-rendered them, and writing the list back could
-    // overwrite a rule another tab saves in between.
-    const restored = store.getSnapshot().length === 0;
-    if (restored) store.set(STARTER_RULES);
+    // Seeds only when the latest saved list is really empty (read and write in one step); with rules there it writes
+    // nothing, so it cannot put a stale list over a rule another tab saved.
+    let restored = false;
+    store.update((latest) => {
+      if (latest.length > 0) return latest;
+      restored = true;
+      return STARTER_RULES;
+    });
     // The example rules are 301 and 302: show them all, whatever list was picked.
     setFilter("All");
     setAnnouncement(restored ? "Restored the example rules." : "Rules were added in another tab, so the example rules were not restored.");
+    headingRef.current?.focus();
   }
 
   const lists: { value: Filter; tone?: Tone; label: string }[] = [
@@ -208,13 +216,13 @@ export default function Home() {
         <main id="main" className="as-main">
           <div className="as-head">
             <div>
-              <h1>{title}</h1>
+              <h1 ref={headingRef} tabIndex={-1}>{title}</h1>
               <p aria-live="polite">{visible.length} {visible.length === 1 ? "rule" : "rules"}{needle ? ` matching “${query.trim()}”` : ""}</p>
             </div>
             <div className="as-tools">
               <label className="as-search">
                 <span className="as-sr">Search rules</span>
-                <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search paths" />
+                <input ref={searchRef} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search paths" />
               </label>
               {composing ? null : <button ref={newRef} type="button" className="as-button" onClick={() => setComposing(true)}><PlusIcon />New rule</button>}
             </div>
@@ -271,7 +279,7 @@ export default function Home() {
                 <>
                   <strong>Nothing matches</strong>
                   No rule in {filter === "All" ? "the stack" : `the ${filter} list`} mentions “{query.trim()}”.
-                  <div className="rm-empty-actions"><button type="button" className="as-plain" onClick={() => setQuery("")}>Clear search</button></div>
+                  <div className="rm-empty-actions"><button type="button" className="as-plain" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>Clear search</button></div>
                 </>
               ) : rules.length === 0 ? (
                 <>

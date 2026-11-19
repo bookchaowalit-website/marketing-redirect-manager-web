@@ -211,9 +211,12 @@ describe("redirect manager", () => {
     press(button("Restore example rules"));
     expect($("h1")?.textContent).toBe("All rules");
     expect(rows()).toHaveLength(STARTER_RULES.length);
+    // The pressed button has gone with the empty card: focus moves to the list heading.
+    expect(document.activeElement).toBe($("h1"));
     type(host.querySelector('input[type="search"]') as HTMLInputElement, "zzz");
     expect($(".as-empty")?.textContent).toContain("Nothing matches");
     press(button("Clear search"));
+    expect(document.activeElement).toBe(host.querySelector('input[type="search"]'));
     expect(rows()).toHaveLength(2);
   });
 });

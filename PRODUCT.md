@@ -33,6 +33,12 @@ A portfolio visitor, or someone sketching which old paths should forward where b
 - Nothing is published or enforced: no server, CDN or hosting config is written ("Nothing is published").
 - No accounts, sync or analytics (Vercel Analytics and Speed Insights were removed 2026-11-19).
 
+## Known limits
+
+- Two tabs: every write (including Restore example rules, which seeds only an empty list) reads the latest saved
+  list and writes in one synchronous step, but there is no cross-tab lock, so two tabs saving in the same instant can
+  still lose one save. A Web Locks wrapper around every write path would close it; not done for a demo list.
+
 ## Live URL and deploy state
 
 - Live: https://redirect-manager.bookchaowalit.com (HTTP 200 on 2026-10-23).
