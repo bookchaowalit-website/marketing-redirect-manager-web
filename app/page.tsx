@@ -39,6 +39,8 @@ export default function Home() {
   const setRemoved = (batch: RemovedBatch | null) => { removedRef.current = batch; setRemovedState(batch); };
   const [toastFocused, setToastFocused] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  // A visible note for an Undo that could not bring every rule back; cleared by the next remove.
+  const [notice, setNotice] = useState("");
   const fromRef = useRef<HTMLInputElement>(null);
   const toRef = useRef<HTMLInputElement>(null);
   const newRef = useRef<HTMLButtonElement>(null);
@@ -139,6 +141,7 @@ export default function Home() {
       prevShown: shownAt > 0 ? visible[shownAt - 1].id : undefined,
     };
     const items = [...(removedRef.current?.items ?? []), entry];
+    setNotice("");
     setRemoved({ items, viaKeyboard });
     setAnnouncement(`${removedLabel(items)}. Undo is available for a few seconds.`);
   }
@@ -163,6 +166,8 @@ export default function Home() {
     const restored = back.length === 0 ? "" : back.length === 1 ? `Restored ${back[0].rule.from}.` : `Restored ${back.length} rules.`;
     const kept = blocked.length === 0 ? "" : `${blocked.map(({ rule }) => rule.from).join(", ")} ${blocked.length === 1 ? "is" : "are"} already in use, so the newer ${blocked.length === 1 ? "rule stays" : "rules stay"}.`;
     setAnnouncement([restored, kept].filter(Boolean).join(" "));
+    // The toast closes, so a rule that could not come back is also explained on screen.
+    setNotice(kept);
     // Undone: back to the restored row (the latest one, where the user was last).
     closeToast(back.length ? [back[back.length - 1].rule.id] : undefined);
   }
@@ -170,12 +175,10 @@ export default function Home() {
   function restoreExamples() {
     // Read the saved list first: another tab may have added rules since this one drew "No rules yet",
     // and writing the examples over them would lose those rules with no Undo.
-    let restored = false;
-    store.update((current) => {
-      if (current.length > 0) return current;
-      restored = true;
-      return STARTER_RULES;
-    });
+    // When rules are there, write nothing: the read already re-rendered them, and writing the list back could
+    // overwrite a rule another tab saves in between.
+    const restored = store.getSnapshot().length === 0;
+    if (restored) store.set(STARTER_RULES);
     // The example rules are 301 and 302: show them all, whatever list was picked.
     setFilter("All");
     setAnnouncement(restored ? "Restored the example rules." : "Rules were added in another tab, so the example rules were not restored.");
@@ -246,6 +249,8 @@ export default function Home() {
               </div>
             </form>
           ) : null}
+
+          {notice ? <p className="rm-notice">{notice}</p> : null}
 
           {visible.length ? (
             <ul className="as-list" aria-label={title}>

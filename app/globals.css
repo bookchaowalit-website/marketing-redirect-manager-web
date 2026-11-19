@@ -23,3 +23,7 @@ html, body { margin: 0; background: var(--as-bg); }
 @media (forced-colors: active) {
   .as-field input[aria-invalid="true"] { border-color: Mark; }
 }
+/* Undo could not bring a rule back: said on screen as well as to screen readers. */
+.rm-notice { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--as-line); border-radius: 12px; background: var(--as-surface); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+/* A long pasted path in "Nothing matches" wraps inside the card instead of being cut by the list's overflow. */
+.as-list.as-empty { overflow-wrap: anywhere; }

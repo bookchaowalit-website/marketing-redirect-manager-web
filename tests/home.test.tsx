@@ -172,6 +172,8 @@ describe("redirect manager", () => {
     submit();
     press(button("Undo remove"));
     expect($('[role="status"]')?.textContent).toBe("/old-blog is already in use, so the newer rule stays.");
+    // The toast closes, so the reason is also shown on screen, not only announced.
+    expect($(".rm-notice")?.textContent).toBe("/old-blog is already in use, so the newer rule stays.");
     expect(rows().filter((row) => row?.startsWith("/old-blog"))).toEqual(["/old-blog → /elsewhere"]);
   });
 
@@ -180,7 +182,11 @@ describe("redirect manager", () => {
     mount();
     // Another tab adds a rule; this tab has not received the storage event yet.
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify([THIRD]));
+    // Skipping must not write the list back: a rule saved between a read and a write would be lost.
+    const write = vi.spyOn(window.localStorage, "setItem");
     press(button("Restore example rules"));
+    expect(write.mock.calls.filter(([key]) => key === STORAGE_KEY)).toEqual([]);
+    write.mockRestore();
     expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]")).toEqual([THIRD]);
     expect(rows()).toEqual(["/third → /3"]);
     expect($('[role="status"]')?.textContent).toBe("Rules were added in another tab, so the example rules were not restored.");
@@ -189,6 +195,7 @@ describe("redirect manager", () => {
   it("lets a long path in an error message wrap instead of widening the form", () => {
     const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
     expect(css).toMatch(/\.rm-error \{[^}]*overflow-wrap: anywhere;/);
+    expect(css).toMatch(/\.as-list\.as-empty \{ overflow-wrap: anywhere; \}/);
   });
 
   it("offers the example rules back when the stack is empty, and clears a search that matches nothing", () => {
