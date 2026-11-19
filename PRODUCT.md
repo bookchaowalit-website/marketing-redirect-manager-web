@@ -38,6 +38,7 @@ A portfolio visitor, or someone sketching which old paths should forward where b
 - Two tabs: every write (including Restore example rules, which seeds only an empty list) reads the latest saved
   list and writes in one synchronous step, but there is no cross-tab lock, so two tabs saving in the same instant can
   still lose one save. A Web Locks wrapper around every write path would close it; not done for a demo list.
+- A self-redirect error (From and To the same) is tied to the From field only, so it and its `aria-invalid` stay until the next Add even after To is edited; frozen app, not fixed (Codex report -6777a98fa7).
 
 ## Live URL and deploy state
 
