@@ -13,7 +13,10 @@ let root: Root;
 let host: HTMLDivElement;
 const $ = (selector: string) => host.querySelector(selector) as HTMLElement | null;
 const button = (text: string) => [...host.querySelectorAll("button")].find((b) => (b.getAttribute("aria-label") ?? b.textContent?.trim())?.startsWith(text)) as HTMLButtonElement;
-const press = (el: Element) => act(() => { el.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+// detail 0 = keyboard (Enter/Space) click, 1 = pointer click.
+const press = (el: Element, detail = 1) => act(() => { el.dispatchEvent(new MouseEvent("click", { bubbles: true, detail })); });
+const escape = () => act(() => { $(".as-toast")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+const THIRD = { id: "3", from: "/third", to: "/3", code: "307" };
 const rows = () => [...host.querySelectorAll(".as-row h3")].map((h) => h.textContent);
 const mount = () => act(() => root.render(<Home />));
 const type = (input: HTMLInputElement, value: string) => act(() => {
@@ -106,11 +109,82 @@ describe("redirect manager", () => {
     expect($(".as-toast")).toBeNull();
   });
 
+  it("consecutive removes restore together with one Undo, each in its place", () => {
+    vi.useFakeTimers();
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...STARTER_RULES, THIRD]));
+    mount();
+    const before = rows();
+    expect(before).toHaveLength(3);
+    press(button("Remove /go/github"));
+    act(() => { vi.advanceTimersByTime(4000); });
+    press(button("Remove /old-blog"));
+    expect(rows()).toHaveLength(1);
+    expect($(".as-toast span")?.textContent).toBe("Removed 2 rules");
+    expect(button("Undo").getAttribute("aria-label")).toBe("Undo remove of 2 rules");
+    // The second removal restarted the 6 s window.
+    act(() => { vi.advanceTimersByTime(4000); });
+    press(button("Undo"));
+    expect(rows()).toEqual(before);
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]")).toHaveLength(3);
+    expect($('[role="status"]')?.textContent).toBe("Restored 2 rules.");
+    expect($(".as-toast")).toBeNull();
+  });
+
+  it("keyboard remove focuses Undo; Undo focuses the restored rule, Escape the next one", () => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...STARTER_RULES, THIRD]));
+    mount();
+    press(button("Remove /old-blog"), 0);
+    expect(document.activeElement).toBe(button("Undo remove"));
+    press(button("Undo remove"), 0);
+    expect(document.activeElement).toBe(button("Remove /old-blog"));
+    press(button("Remove /go/github"), 0);
+    escape();
+    expect($(".as-toast")).toBeNull();
+    expect(document.activeElement).toBe(button("Remove /third"));
+    // The last row: the one before it.
+    press(button("Remove /third"), 0);
+    escape();
+    expect(document.activeElement).toBe(button("Remove /old-blog"));
+    // Nothing left to land on: New rule.
+    press(button("Remove /old-blog"), 0);
+    escape();
+    expect(document.activeElement).toBe(button("New rule"));
+  });
+
+  it("a pointer remove leaves focus alone and the toast reserves its height while it shows", () => {
+    vi.useFakeTimers();
+    mount();
+    press(button("Remove /old-blog"));
+    expect(document.activeElement).not.toBe(button("Undo remove"));
+    expect(document.documentElement.style.getPropertyValue("--as-toast-space")).toMatch(/px$/);
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect(document.documentElement.style.getPropertyValue("--as-toast-space")).toBe("");
+  });
+
+  it("says when Undo cannot bring a rule back because its path was re-added", () => {
+    mount();
+    press(button("Remove /old-blog"));
+    press(button("New rule"));
+    type(field("From path"), "/old-blog");
+    type(field("To destination"), "/elsewhere");
+    submit();
+    press(button("Undo remove"));
+    expect($('[role="status"]')?.textContent).toBe("/old-blog is already in use, so the newer rule stays.");
+    expect(rows().filter((row) => row?.startsWith("/old-blog"))).toEqual(["/old-blog → /elsewhere"]);
+  });
+
   it("offers the example rules back when the stack is empty, and clears a search that matches nothing", () => {
     window.localStorage.setItem(STORAGE_KEY, "[]");
     mount();
     expect($(".as-empty")?.textContent).toContain("No rules yet");
     press(button("Restore example rules"));
+    expect(rows()).toHaveLength(STARTER_RULES.length);
+    // From an empty 307 list too: the view switches to All rules so both examples show.
+    window.localStorage.setItem(STORAGE_KEY, "[]");
+    act(() => { window.dispatchEvent(new StorageEvent("storage")); });
+    press(button("307"));
+    press(button("Restore example rules"));
+    expect($("h1")?.textContent).toBe("All rules");
     expect(rows()).toHaveLength(STARTER_RULES.length);
     type(host.querySelector('input[type="search"]') as HTMLInputElement, "zzz");
     expect($(".as-empty")?.textContent).toContain("Nothing matches");

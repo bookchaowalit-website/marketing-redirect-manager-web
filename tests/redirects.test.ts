@@ -69,4 +69,15 @@ describe("errorField and restoreRule", () => {
     expect(restoreRule([second], first, 9)).toEqual([second, first]);
     expect(restoreRule([{ ...first, id: "new" }], first, 0)).toEqual([{ ...first, id: "new" }]);
   });
+  it("restores next to the rules it sat between, so rules added meanwhile cannot shift it", () => {
+    const [a, b] = STARTER_RULES;
+    const c = { id: "3", from: "/c", to: "/cc", code: "307" as const };
+    const d = { id: "4", from: "/d", to: "/dd", code: "301" as const };
+    // B removed from [A, B, C], then D added at the top: B goes back between A and C, not at index 1.
+    expect(restoreRule([d, a, c], b, 1, { beforeId: "3", afterId: "1" })).toEqual([d, a, b, c]);
+    // Its next neighbour gone too: after the one before it.
+    expect(restoreRule([d, a], b, 1, { beforeId: "3", afterId: "1" })).toEqual([d, a, b]);
+    // Already back: unchanged.
+    expect(restoreRule([a, b], b, 1, { afterId: "1" })).toEqual([a, b]);
+  });
 });

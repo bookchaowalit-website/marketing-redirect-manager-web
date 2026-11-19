@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { AppFoot, AppTop, ListButton, Pill, PlusIcon, type Tone } from "@/components/app-shell";
 import { CODES, CODE_NAMES, STARTER_RULES, STORAGE_KEY, addRule as addTo, errorField, findRule, generateShortPath, removeRule, restoreRule, parseRules, type Code, type Rule } from "@/lib/redirects";
 import { createLocalStore } from "@/lib/local-store";
@@ -11,6 +11,11 @@ const TONE: Record<Code, Tone> = { "301": "green", "302": "amber", "307": "grey"
 const SHORT: Record<Code, string> = { "301": "Permanent", "302": "Temporary", "307": "Keeps method" };
 type Filter = "All" | Code;
 type FieldError = { field: "from" | "to"; message: string } | null;
+// index / beforeId / afterId: where it sat in the stored stack when removed. nextShown / prevShown: the rows shown
+// around it, for focus after Escape.
+type RemovedEntry = { rule: Rule; index: number; beforeId?: string; afterId?: string; nextShown?: string; prevShown?: string };
+type RemovedBatch = { items: RemovedEntry[]; viaKeyboard: boolean };
+const removedLabel = (items: RemovedEntry[]) => (items.length === 1 ? `Removed ${items[0].rule.from}` : `Removed ${items.length} rules`);
 
 function createId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -27,12 +32,19 @@ export default function Home() {
   const [code, setCode] = useState<Code>("301");
   const [error, setError] = useState<FieldError>(null);
   const [test, setTest] = useState("/old-blog");
-  const [removed, setRemoved] = useState<{ rule: Rule; index: number } | null>(null);
+  // Every removal still inside the Undo window: one Undo puts them all back where they were.
+  const [removed, setRemovedState] = useState<RemovedBatch | null>(null);
+  // The latest batch, so two removals before a re-render still both land in it.
+  const removedRef = useRef<RemovedBatch | null>(null);
+  const setRemoved = (batch: RemovedBatch | null) => { removedRef.current = batch; setRemovedState(batch); };
   const [toastFocused, setToastFocused] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const fromRef = useRef<HTMLInputElement>(null);
   const toRef = useRef<HTMLInputElement>(null);
   const newRef = useRef<HTMLButtonElement>(null);
+  const undoRef = useRef<HTMLButtonElement>(null);
+  const toastRef = useRef<HTMLDivElement>(null);
+  const focusRowsNext = useRef<string[] | null>(null);
   const wasComposing = useRef(false);
 
   const needle = query.trim().toLowerCase();
@@ -46,10 +58,35 @@ export default function Home() {
     else if (wasComposing.current) newRef.current?.focus();
     wasComposing.current = composing;
   }, [composing]);
-  // The Undo toast closes 6 s after the latest removal, but never while it holds focus.
+  // A removal made from the keyboard moves focus to Undo (the focused Remove button has just gone).
+  useEffect(() => { if (removed?.viaKeyboard) undoRef.current?.focus(); }, [removed]);
+  // When the toast closes after Undo or Escape, focus goes back near the removed row once the list has re-rendered:
+  // the first of these rows still shown, else New rule (or the composer's From field when it is open).
+  useEffect(() => {
+    const ids = focusRowsNext.current;
+    if (removed || !ids) return;
+    focusRowsNext.current = null;
+    const shown = [...document.querySelectorAll<HTMLElement>(".as-row[data-rule]")];
+    const row = ids.map((id) => shown.find((entry) => entry.dataset.rule === id)).find(Boolean);
+    (row?.querySelector<HTMLButtonElement>(".as-danger") ?? newRef.current ?? fromRef.current)?.focus();
+  }, [removed, rules]);
+  // While the toast shows, reserve its height (plus its 24px offset and a gap) at the bottom of the page and in
+  // scroll-padding, so the footer links and anything focused behind it can scroll clear of it.
+  const toastShown = removed !== null;
+  useLayoutEffect(() => {
+    const toast = toastRef.current;
+    if (!toastShown || !toast) return;
+    const rootStyle = document.documentElement.style;
+    const reserve = () => rootStyle.setProperty("--as-toast-space", `${toast.offsetHeight + 32}px`);
+    reserve();
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(reserve) : null;
+    observer?.observe(toast);
+    return () => { observer?.disconnect(); rootStyle.removeProperty("--as-toast-space"); };
+  }, [toastShown]);
+  // The Undo toast closes 6 s after the latest removal (each removal restarts it), but never while it holds focus.
   useEffect(() => {
     if (!removed || toastFocused) return;
-    const timer = window.setTimeout(() => setRemoved(null), 6000);
+    const timer = window.setTimeout(() => { removedRef.current = null; setRemovedState(null); }, 6000);
     return () => window.clearTimeout(timer);
   }, [removed, toastFocused]);
 
@@ -87,19 +124,54 @@ export default function Home() {
     setError(null);
   }
 
-  function remove(rule: Rule) {
-    const index = rules.findIndex((item) => item.id === rule.id);
-    store.update((current) => removeRule(current, rule.id));
-    setRemoved({ rule, index });
-    setAnnouncement(`Removed ${rule.from}. Undo is available for a few seconds.`);
+  function remove(rule: Rule, viaKeyboard: boolean) {
+    const current = store.getSnapshot();
+    const index = current.findIndex((item) => item.id === rule.id);
+    if (index < 0) return;
+    store.set(removeRule(current, rule.id));
+    const shownAt = visible.findIndex((item) => item.id === rule.id);
+    const entry: RemovedEntry = {
+      rule: current[index],
+      index,
+      beforeId: current[index + 1]?.id,
+      afterId: index > 0 ? current[index - 1].id : undefined,
+      nextShown: visible[shownAt + 1]?.id,
+      prevShown: shownAt > 0 ? visible[shownAt - 1].id : undefined,
+    };
+    const items = [...(removedRef.current?.items ?? []), entry];
+    setRemoved({ items, viaKeyboard });
+    setAnnouncement(`${removedLabel(items)}. Undo is available for a few seconds.`);
+  }
+
+  function closeToast(focusIds?: string[]) {
+    const last = removedRef.current?.items.at(-1);
+    // Dismissed: the row after the removed one, else the one before it.
+    focusRowsNext.current = focusIds ?? [last?.nextShown, last?.prevShown].filter((id): id is string => Boolean(id));
+    setRemoved(null);
+    setToastFocused(false);
   }
 
   function undo() {
-    if (!removed) return;
-    store.update((current) => restoreRule(current, removed.rule, removed.index));
-    setAnnouncement(`Restored ${removed.rule.from}.`);
-    setRemoved(null);
-    setToastFocused(false);
+    const items = removedRef.current?.items;
+    if (!items?.length) return;
+    // Latest removal first, so each rule goes back next to the rules it sat between at the time.
+    const next = items.reduceRight((list, { rule, index, beforeId, afterId }) => restoreRule(list, rule, index, { beforeId, afterId }), store.getSnapshot());
+    store.set(next);
+    // A path re-added meanwhile keeps the new rule: say which ones could not come back.
+    const back = items.filter(({ rule }) => next.some((item) => item.id === rule.id));
+    const blocked = items.filter(({ rule }) => !next.some((item) => item.id === rule.id));
+    const restored = back.length === 0 ? "" : back.length === 1 ? `Restored ${back[0].rule.from}.` : `Restored ${back.length} rules.`;
+    const kept = blocked.length === 0 ? "" : `${blocked.map(({ rule }) => rule.from).join(", ")} ${blocked.length === 1 ? "is" : "are"} already in use, so the newer ${blocked.length === 1 ? "rule stays" : "rules stay"}.`;
+    setAnnouncement([restored, kept].filter(Boolean).join(" "));
+    // Undone: back to the restored row (the latest one, where the user was last).
+    closeToast(back.length ? [back[back.length - 1].rule.id] : undefined);
+  }
+
+  function restoreExamples() {
+    store.set(STARTER_RULES);
+    // The example rules are 301 and 302: show them all, whatever list was picked.
+    setFilter("All");
+    setAnnouncement("Restored the example rules.");
   }
 
   const lists: { value: Filter; tone?: Tone; label: string }[] = [
@@ -171,13 +243,13 @@ export default function Home() {
           {visible.length ? (
             <ul className="as-list" aria-label={title}>
               {visible.map((rule) => (
-                <li className="as-row" key={rule.id}>
+                <li className="as-row" key={rule.id} data-rule={rule.id}>
                   <div>
                     <h3><span className="rm-path">{rule.from}</span> <span className="rm-arrow" aria-label="to">→</span> <span className="rm-path">{rule.to}</span></h3>
                     <p>{CODE_NAMES[rule.code]} redirect</p>
                   </div>
                   <Pill tone={TONE[rule.code]}>{rule.code}</Pill>
-                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${rule.from}`} onClick={() => remove(rule)}>Remove</button>
+                  <button type="button" className="as-plain as-danger" aria-label={`Remove ${rule.from}`} onClick={(event) => remove(rule, event.detail === 0)}>Remove</button>
                 </li>
               ))}
             </ul>
@@ -193,7 +265,7 @@ export default function Home() {
                 <>
                   <strong>No rules yet</strong>
                   Press New rule to add the first one, or bring back the two example rules.
-                  <div className="rm-empty-actions"><button type="button" className="as-plain" onClick={() => store.set(STARTER_RULES)}>Restore example rules</button></div>
+                  <div className="rm-empty-actions"><button type="button" className="as-plain" onClick={restoreExamples}>Restore example rules</button></div>
                 </>
               ) : (
                 <><strong>No {filter} rules</strong>Press New rule and pick {filter} as the status to add one.</>
@@ -224,15 +296,16 @@ export default function Home() {
       <p className="as-sr" role="status" aria-live="polite">{announcement}</p>
       {removed ? (
         <div
+          ref={toastRef}
           className="as-toast"
           role="group"
           aria-label="Undo remove"
           onFocus={() => setToastFocused(true)}
           onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
-          onKeyDown={(event) => { if (event.key === "Escape") { setRemoved(null); setToastFocused(false); } }}
+          onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
         >
-          <span>Removed {removed.rule.from}</span>
-          <button type="button" className="as-plain" onClick={undo} aria-label="Undo remove">Undo</button>
+          <span>{removedLabel(removed.items)}</span>
+          <button ref={undoRef} type="button" className="as-plain" onClick={undo} aria-label={removed.items.length === 1 ? "Undo remove" : `Undo remove of ${removed.items.length} rules`}>Undo</button>
         </div>
       ) : null}
 

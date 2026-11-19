@@ -80,10 +80,16 @@ export function errorField(input: { from: string; to: string }, error: string): 
   return "from";
 }
 
-/** Puts a removed rule back at its old position (Undo); a rule whose path was re-added meanwhile stays out. */
-export function restoreRule(rules: Rule[], rule: Rule, index: number): Rule[] {
-  if (findRule(rules, rule.from)) return rules;
-  const at = Math.max(0, Math.min(index, rules.length));
+/**
+ * Puts a removed rule back at its old place (Undo): just before the rule that followed it, else just after the one
+ * before it, else at its old index (so rules added meanwhile cannot shift it). A rule whose path was re-added
+ * meanwhile stays out.
+ */
+export function restoreRule(rules: Rule[], rule: Rule, index: number, neighbours: { beforeId?: string; afterId?: string } = {}): Rule[] {
+  if (findRule(rules, rule.from) || rules.some((item) => item.id === rule.id)) return rules;
+  const next = neighbours.beforeId ? rules.findIndex((item) => item.id === neighbours.beforeId) : -1;
+  const prev = neighbours.afterId ? rules.findIndex((item) => item.id === neighbours.afterId) : -1;
+  const at = next >= 0 ? next : prev >= 0 ? prev + 1 : Math.max(0, Math.min(index, rules.length));
   return [...rules.slice(0, at), rule, ...rules.slice(at)];
 }
 
